@@ -4,6 +4,8 @@ import cookieParser from "cookie-parser";
 import authRoutes from "./routes/auth";
 import coursesRoutes from "./routes/courses";
 import stripeRoutes from "./routes/stripe";
+import webhookRoutes from "./routes/webhook";
+
 const app = express();
 
 app.use(
@@ -12,6 +14,7 @@ app.use(
     credentials: true,
   })
 );
+app.use("/api/webhook", webhookRoutes);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
