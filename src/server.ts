@@ -3,7 +3,7 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import authRoutes from "./routes/auth";
 import coursesRoutes from "./routes/courses";
-
+import stripeRoutes from "./routes/stripe";
 const app = express();
 
 app.use(
@@ -18,5 +18,6 @@ app.use(cookieParser());
 
 app.use("/api/auth", authRoutes);
 app.use("/api/courses", coursesRoutes);
+app.use("/api/stripe", stripeRoutes);
 
 export default app;
