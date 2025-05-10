@@ -15,17 +15,15 @@ export const stripeWebhook = async (req: Request, res: Response) => {
   ) {
     const courseId = session.metadata?.courseId;
     const stripeCustomerId = session.customer;
-    console.log("Stripe Customer ID", stripeCustomerId);
 
     if (!courseId || !stripeCustomerId) {
       throw new Error("Missing courseId or stripeCustomerId");
     }
 
     const user = await User.findOne({ stripeCustomerId });
-    console.log("User", user);
 
     if (!user) {
-      console.error(`User not found for customer ID: ${stripeCustomerId}`);
+      res.status(400).send("User not found");
       return;
     }
 
@@ -37,7 +35,13 @@ export const stripeWebhook = async (req: Request, res: Response) => {
       stripePurchaseId: session.id,
     });
 
-    console.log("Purchase created", purchase);
+    if (!purchase) {
+      res.status(400).send("Purchase not created");
+      return;
+    }
+
+    res.status(200).send("Purchase created");
+    return;
   }
 
   try {
@@ -47,7 +51,6 @@ export const stripeWebhook = async (req: Request, res: Response) => {
       process.env.STRIPE_WEBHOOK_SECRET!
     );
   } catch (error) {
-    console.error("Webhook signature verification failed", error);
     res.status(400).send(`Webhook error: ${error}`);
     return;
   }
@@ -63,8 +66,9 @@ export const stripeWebhook = async (req: Request, res: Response) => {
         throw new Error(`Unhandled event type ${event.type}`);
     }
   } catch (error) {
-    console.error("Webhook error", error);
     res.status(400).send(`Webhook error: ${error}`);
     return;
   }
+
+  res.status(200).send("Webhook received");
 };
