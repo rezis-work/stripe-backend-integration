@@ -63,3 +63,67 @@ export const createCheckoutSession = async (req: Request, res: Response) => {
 
   res.status(200).json({ checkoutUrl: session.url });
 };
+
+export const createProPlanCheckoutSession = async (
+  req: Request,
+  res: Response
+) => {
+  const { planId } = req.params as { planId: "month" | "year" };
+  const { userId } = req;
+
+  if (!userId) {
+    res.status(401).json({ message: "Unauthorized" });
+    return;
+  }
+
+  const currentUser = await User.findById(userId);
+  if (!currentUser) {
+    res.status(401).json({ message: "Unauthorized" });
+    return;
+  }
+
+  // TODO: implement rate limiting
+  const rateLimitKey = `pro-plan-checkout-rate-limit:${userId}`;
+  const { success } = await rateLimit.limit(rateLimitKey);
+  if (!success) {
+    throw new Error(`Rate limit exceeded.`);
+  }
+
+  // monthly plan || yearly plan
+  let priceId;
+  if (planId === "month") {
+    priceId = process.env.STRIPE_MONTLY_PRICE_ID!;
+  } else if (planId === "year") {
+    priceId = process.env.STRIPE_YEARLY_PRICE_ID!;
+  } else {
+    res.status(400).json({ message: "Invalid plan id" });
+    return;
+  }
+
+  if (!priceId) {
+    throw new Error("Price id not found");
+  }
+
+  const session = await stripe.checkout.sessions.create({
+    customer: currentUser.stripeCustomerId as string,
+    line_items: [
+      {
+        price: priceId,
+        quantity: 1,
+      },
+    ],
+    mode: "subscription",
+    success_url: `${
+      process.env.FRONTEND_URL
+    }/pro-plan?session_id={CHECKOUT_SESSION_ID}&year=${
+      planId === "year" ? "true" : "false"
+    }`,
+    cancel_url: `${process.env.FRONTEND_URL}/pro`,
+    metadata: {
+      userId: currentUser._id.toString(),
+      planId,
+    },
+  });
+
+  res.status(200).json({ checkoutUrl: session.url });
+};

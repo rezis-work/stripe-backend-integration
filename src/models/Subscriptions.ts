@@ -15,6 +15,10 @@ const subscriptionSchema = new mongoose.Schema({
     type: Date,
     required: true,
   },
+  currentPeriodEnd: {
+    type: Date,
+    required: true,
+  },
   stripeSubscriptionId: {
     type: String,
     required: true,

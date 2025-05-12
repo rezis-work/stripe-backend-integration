@@ -3,6 +3,7 @@ import Stripe from "stripe";
 import stripe from "../config/stripe";
 import User from "../models/User";
 import Purchase from "../models/Purchases";
+import Subscription from "../models/Subscriptions";
 
 export const stripeWebhook = async (req: Request, res: Response) => {
   const body = req.body;
@@ -44,6 +45,55 @@ export const stripeWebhook = async (req: Request, res: Response) => {
     return;
   }
 
+  async function handleSubscriptionUpsert(
+    subscription: Stripe.Subscription,
+    eventType: string
+  ) {
+    const stripeCustomerId = subscription.customer as string;
+    const user = await User.findOne({ stripeCustomerId });
+
+    if (!user) {
+      throw new Error(
+        `User not found for stripeCustomerId: ${stripeCustomerId}`
+      );
+    }
+
+    try {
+      const subscriptionDoc = await Subscription.findOneAndUpdate(
+        {
+          userId: user._id,
+          stripeSubscriptionId: subscription.id,
+        },
+        {
+          $set: {
+            status: subscription.status,
+            planType: subscription.items.data[0].plan.interval as
+              | "month"
+              | "year",
+            currentPeriodStart: subscription.trial_start,
+            currentPeriodEnd: subscription.trial_end,
+            cancelAtPeriodEnd: subscription.cancel_at_period_end,
+          },
+        },
+        { upsert: true, new: true }
+      );
+      console.log(
+        `Subscription upserted for user: ${user._id} ${eventType} for subscription ${subscription.id}`
+      );
+
+      await User.findByIdAndUpdate(user._id, {
+        $set: {
+          currentSubscriptionId: subscriptionDoc._id,
+        },
+      });
+    } catch (error) {
+      console.error(
+        `Error processing subscription ${eventType} for subscription ${subscription.id}`,
+        error
+      );
+    }
+  }
+
   try {
     event = stripe.webhooks.constructEvent(
       body,
@@ -60,6 +110,14 @@ export const stripeWebhook = async (req: Request, res: Response) => {
       case "checkout.session.completed":
         await handleCheckoutSessionCompleted(
           event.data.object as Stripe.Checkout.Session
+        );
+        break;
+
+      case "customer.subscription.created":
+      case "customer.subscription.updated":
+        await handleSubscriptionUpsert(
+          event.data.object as Stripe.Subscription,
+          event.type
         );
         break;
       default:
