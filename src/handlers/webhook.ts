@@ -4,6 +4,7 @@ import stripe from "../config/stripe";
 import User from "../models/User";
 import Purchase from "../models/Purchases";
 import Subscription from "../models/Subscriptions";
+import resend from "../config/resend";
 
 export const stripeWebhook = async (req: Request, res: Response) => {
   const body = req.body;
@@ -40,6 +41,13 @@ export const stripeWebhook = async (req: Request, res: Response) => {
       res.status(400).send("Purchase not created");
       return;
     }
+
+    await resend.emails.send({
+      from: "no-reply@linedevltd.com",
+      to: user.email,
+      subject: "Purchase successful",
+      html: "<p>Purchase successful</p>",
+    });
 
     res.status(200).send("Purchase created");
     return;

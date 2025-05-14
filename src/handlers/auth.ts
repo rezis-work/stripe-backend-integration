@@ -6,6 +6,7 @@ import jwt, { JwtPayload } from "jsonwebtoken";
 import stripe from "../config/stripe";
 import Subscription from "../models/Subscriptions";
 import Purchase from "../models/Purchases";
+import resend from "../config/resend";
 export const register = async (req: Request, res: Response) => {
   const { name, email, password, stripeCustomerId = null } = req.body;
 
@@ -43,6 +44,13 @@ export const register = async (req: Request, res: Response) => {
 
     await User.findByIdAndUpdate(user._id, {
       stripeCustomerId: customerStripe.id,
+    });
+
+    await resend.emails.send({
+      from: "no-reply@linedevltd.com",
+      to: user.email,
+      subject: "Welcome to Linedevltd",
+      html: "<p>Welcome to Linedevltd</p>",
     });
 
     res.status(201).json({
