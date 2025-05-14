@@ -8,7 +8,6 @@ import Subscription from "../models/Subscriptions";
 import Purchase from "../models/Purchases";
 export const register = async (req: Request, res: Response) => {
   const { name, email, password, stripeCustomerId = null } = req.body;
-  console.log(name, email, password);
 
   try {
     const existingUser = await User.findOne({ email });
@@ -20,7 +19,6 @@ export const register = async (req: Request, res: Response) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    console.log(hashedPassword);
     const user = await User.create({
       name,
       email,
@@ -68,7 +66,6 @@ export const register = async (req: Request, res: Response) => {
 
 export const login = async (req: Request, res: Response) => {
   const { email, password } = req.body;
-  console.log(email, password);
 
   try {
     const user = await User.findOne({ email });
